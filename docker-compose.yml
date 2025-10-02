@@ -177,11 +177,43 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9621/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9621/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # LightRAG MCP Server for Claude Code (stdio via docker exec)
+  lightrag-mcp:
+    container_name: lightrag-mcp
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    image: lightrag-mcp:latest
+    depends_on:
+      lightrag:
+        condition: service_healthy
+    volumes:
+      - /data/claraly/rag/lightrag:/data/lightrag_data
+    env_file:
+      - .env
+    environment:
+      - WORKSPACE=${WORKSPACE}
+      - LIGHTRAG_WORKING_DIR=/data/lightrag_data
+      - LIGHTRAG_LLM_MODEL=${LLM_MODEL}
+      - LIGHTRAG_LLM_HOST=${LLM_BINDING_HOST}
+      - LIGHTRAG_EMBEDDING_MODEL=${EMBEDDING_MODEL}
+      - LIGHTRAG_EMBEDDING_HOST=${EMBEDDING_BINDING_HOST}
+      - LIGHTRAG_EMBEDDING_DIM=${EMBEDDING_DIM}
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import mcp, lightrag"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 # Named volumes for easier management
 volumes:
